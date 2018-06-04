@@ -78,6 +78,13 @@ resource "aws_security_group" "default" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 27017
+    to_port     = 27019
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Enabling SSL port
 
   ingress {
@@ -271,4 +278,43 @@ resource "aws_instance" "kubernates_worker2" {
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ubuntu --private-key '${var.private_key_path}' -i Ansible/hosts.ini Ansible/kube.yml"
   }
+}
+
+resource "aws_instance" "mongo_db" {
+  instance_type = "t2.medium"
+  ami           = "ami-a4dc46db"
+
+  key_name               = "${var.key_name}"
+  vpc_security_group_ids = ["${aws_security_group.default.id}"]
+
+  # We're going to launch into the public subnet for this.
+  # Normally, in production environments, webservers would be in
+  # private subnets.
+  subnet_id = "${aws_subnet.default.id}"
+
+  # The connection block tells our provisioner how to
+  # communicate with the instance
+
+  tags {
+    Name = "mongo_db"
+    role = "mongo_db"
+  }
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = "${file( "${pathexpand( "${var.private_key_path}" )}" )}"
+    timeout     = "60s"
+  }
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5",
+      "echo \"deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.6 multiverse\" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list",
+      "sudo apt-get -y update",
+      "sudo apt-get install -y mongodb",
+    ]
+  }
+
+  # provisioner "local-exec" {
+  #   command = "echo '[master]' > Ansible/hosts.ini && echo 'master1' `echo ansible_ssh_host=``echo '${aws_instance.kubernates_Master.public_ip}'` >> Ansible/hosts.ini"
+  # }
 }
