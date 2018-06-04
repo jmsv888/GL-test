@@ -33,7 +33,7 @@ resource "aws_subnet" "default" {
 }
 
 # Our default security group to access
-# instances over SSH and HTTP
+# instances over SSH and HTTP ports for mongodb, kubernates, dockers and so on
 resource "aws_security_group" "default" {
   name        = "terraform_securitygroup"
   description = "Used for public instances"
@@ -114,13 +114,14 @@ resource "aws_security_group" "default" {
   }
 }
 
+#Key chain definition
 resource "aws_key_pair" "auth" {
   key_name   = "aws_terraform2"
   public_key = "${file("keys/aws_terraform2.pem.pub")}"
 }
 
 resource "aws_instance" "jenkins_master" {
-  instance_type = "t2.micro"
+  instance_type = "t2.medium"
   ami           = "ami-a4dc46db"
 
   key_name               = "${var.key_name}"
@@ -149,6 +150,15 @@ resource "aws_instance" "jenkins_master" {
       "sudo apt-get -y update",
       "sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common python-simplejson",
       "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+      "sudo apt -y install python-pip",
+      "pip install -y awscli",
+      ". ./.profile",
+      "curl -fsSL get.docker.com -o get-docker.sh",
+      "sudo sh get-docker.sh",
+      "sudo usermod -aG docker ubunu",
+      "export DOCKER_HOST=unix:///var/run/docker.sock",
+      "sudo apt-get update -y",
+      "sudo apt-get install -y docker-ce",
     ]
   }
   provisioner "local-exec" {
@@ -280,41 +290,46 @@ resource "aws_instance" "kubernates_worker2" {
   }
 }
 
-resource "aws_instance" "mongo_db" {
-  instance_type = "t2.medium"
-  ami           = "ami-a4dc46db"
+# resource "aws_instance" "mongo_db" {
+#   instance_type = "t2.medium"
+#   ami           = "ami-a4dc46db"
+#   depends_on    = ["aws_instance.kubernates_worker2"]
 
-  key_name               = "${var.key_name}"
-  vpc_security_group_ids = ["${aws_security_group.default.id}"]
 
-  # We're going to launch into the public subnet for this.
-  # Normally, in production environments, webservers would be in
-  # private subnets.
-  subnet_id = "${aws_subnet.default.id}"
+#   key_name               = "${var.key_name}"
+#   vpc_security_group_ids = ["${aws_security_group.default.id}"]
 
-  # The connection block tells our provisioner how to
-  # communicate with the instance
 
-  tags {
-    Name = "mongo_db"
-    role = "mongo_db"
-  }
-  connection {
-    type        = "ssh"
-    user        = "ubuntu"
-    private_key = "${file( "${pathexpand( "${var.private_key_path}" )}" )}"
-    timeout     = "60s"
-  }
-  provisioner "remote-exec" {
-    inline = [
-      "sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5",
-      "echo \"deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.6 multiverse\" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list",
-      "sudo apt-get -y update",
-      "sudo apt-get install -y mongodb",
-    ]
-  }
+#   # We're going to launch into the public subnet for this.
+#   # Normally, in production environments, webservers would be in
+#   # private subnets.
+#   subnet_id = "${aws_subnet.default.id}"
 
-  # provisioner "local-exec" {
-  #   command = "echo '[master]' > Ansible/hosts.ini && echo 'master1' `echo ansible_ssh_host=``echo '${aws_instance.kubernates_Master.public_ip}'` >> Ansible/hosts.ini"
-  # }
-}
+
+#   # The connection block tells our provisioner how to
+#   # communicate with the instance
+
+
+#   tags {
+#     Name = "mongo_db"
+#     role = "mongo_db"
+#   }
+#   connection {
+#     type        = "ssh"
+#     user        = "ubuntu"
+#     private_key = "${file( "${pathexpand( "${var.private_key_path}" )}" )}"
+#     timeout     = "60s"
+#   }
+#   provisioner "remote-exec" {
+#     inline = [
+#       "sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5",
+#       "echo \"deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.6 multiverse\" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list",
+#       "sudo apt-get -y update",
+#       "sudo apt-get install -y mongodb",
+#     ]
+#   }
+#   provisioner "local-exec" {
+#     command = "echo '[mongodb]' >> Ansible/hosts.ini && echo '${aws_instance.mongo_db.public_ip}' >> Ansible/hosts.ini"
+#   }
+# }
+
