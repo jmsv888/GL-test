@@ -16,7 +16,9 @@
       apt: pkg={{ item }} state=present update_cache=yes
       with_items:
         - build-essential
+        - maven
         - git
+        - docker
         - openjdk-8-jdk
 
     # Ubuntu.
