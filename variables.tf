@@ -9,19 +9,15 @@ variable "profile" {
 
 variable "key_name" {
   description = "Name of the AWS key pair"
-  default     = "id_rsa"
+  default     = "aws_terraform2"
 }
 
 variable "public_key_path" {
-  description = <<DESCRIPTION
-Path to the SSH public key for authentication.
-Example: ~/.ssh/terraform-test.pub
-DESCRIPTION
-
-  default = "keys/aws_terraform.pem.pub"
+  description = "AWS Private Key"
+  default     = "keys/aws_terraform2.pem.pub"
 }
 
 variable "private_key_path" {
   description = "AWS Private Key"
-  default     = "keys/aws_terraform.pem"
+  default     = "keys/aws_terraform2.pem"
 }

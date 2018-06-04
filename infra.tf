@@ -4,7 +4,9 @@ provider "aws" {
 }
 
 resource "aws_vpc" "vpc" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = "true"
+  enable_dns_support   = "true"
 }
 
 # Create an internet gateway to give our subnet access to the open internet
@@ -57,7 +59,22 @@ resource "aws_security_group" "default" {
   ingress {
     from_port   = 8080
     to_port     = 8080
-    protocol    = "TCP"
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  #kube default port
+  ingress {
+    from_port   = 6443
+    to_port     = 6443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 10250
+    to_port     = 10250
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -66,7 +83,19 @@ resource "aws_security_group" "default" {
   ingress {
     from_port   = 443
     to_port     = 443
-    protocol    = "TCP"
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
   # outbound internet access
@@ -79,15 +108,15 @@ resource "aws_security_group" "default" {
 }
 
 resource "aws_key_pair" "auth" {
-  key_name   = "aws_terraform"
-  public_key = "${file("keys/aws_terraform.pem.pub")}"
+  key_name   = "aws_terraform2"
+  public_key = "${file("keys/aws_terraform2.pem.pub")}"
 }
 
 resource "aws_instance" "jenkins_master" {
   instance_type = "t2.micro"
-  ami           = "ami-fce3c696"
+  ami           = "ami-a4dc46db"
 
-  key_name               = "aws_terraform"
+  key_name               = "${var.key_name}"
   vpc_security_group_ids = ["${aws_security_group.default.id}"]
 
   # We're going to launch into the public subnet for this.
@@ -111,15 +140,24 @@ resource "aws_instance" "jenkins_master" {
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get -y update",
+      "sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common python-simplejson",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
     ]
+  }
+  provisioner "local-exec" {
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ubuntu --private-key '${var.private_key_path}' -i '${aws_instance.jenkins_master.public_ip},' Ansible/jenkins.yml"
   }
 }
 
-resource "aws_instance" "kubernates_Master" {
-  instance_type = "t2.micro"
-  ami           = "ami-fce3c696"
+output "public_ip" {
+  value = "${aws_instance.jenkins_master.public_ip}"
+}
 
-  key_name               = "aws_terraform"
+resource "aws_instance" "kubernates_Master" {
+  instance_type = "t2.medium"
+  ami           = "ami-a4dc46db"
+
+  key_name               = "${var.key_name}"
   vpc_security_group_ids = ["${aws_security_group.default.id}"]
 
   # We're going to launch into the public subnet for this.
@@ -143,15 +181,21 @@ resource "aws_instance" "kubernates_Master" {
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get -y update",
+      "sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common python-simplejson",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
     ]
+  }
+  provisioner "local-exec" {
+    command = "echo '[master]' > Ansible/hosts.ini && echo 'master1' `echo ansible_ssh_host=``echo '${aws_instance.kubernates_Master.public_ip}'` >> Ansible/hosts.ini"
   }
 }
 
 resource "aws_instance" "kubernates_worker1" {
-  instance_type = "t2.micro"
-  ami           = "ami-fce3c696"
+  instance_type = "t2.medium"
+  ami           = "ami-a4dc46db"
+  depends_on    = ["aws_instance.kubernates_Master"]
 
-  key_name               = "aws_terraform"
+  key_name               = "${var.key_name}"
   vpc_security_group_ids = ["${aws_security_group.default.id}"]
 
   # We're going to launch into the public subnet for this.
@@ -175,15 +219,21 @@ resource "aws_instance" "kubernates_worker1" {
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get -y update",
+      "sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common python-simplejson",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
     ]
+  }
+  provisioner "local-exec" {
+    command = "echo '[worker]' >> Ansible/hosts.ini && echo '${aws_instance.kubernates_worker1.public_ip}' >> Ansible/hosts.ini"
   }
 }
 
 resource "aws_instance" "kubernates_worker2" {
-  instance_type = "t2.micro"
-  ami           = "ami-fce3c696"
+  instance_type = "t2.medium"
+  ami           = "ami-a4dc46db"
+  depends_on    = ["aws_instance.kubernates_worker1"]
 
-  key_name               = "aws_terraform"
+  key_name               = "${var.key_name}"
   vpc_security_group_ids = ["${aws_security_group.default.id}"]
 
   # We're going to launch into the public subnet for this.
@@ -211,6 +261,14 @@ resource "aws_instance" "kubernates_worker2" {
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get -y update",
+      "sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common python-simplejson",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
     ]
+  }
+  provisioner "local-exec" {
+    command = "echo '${aws_instance.kubernates_worker2.public_ip}' >> Ansible/hosts.ini"
+  }
+  provisioner "local-exec" {
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ubuntu --private-key '${var.private_key_path}' -i Ansible/hosts.ini Ansible/kube.yml"
   }
 }
