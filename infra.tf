@@ -159,10 +159,14 @@ resource "aws_instance" "jenkins_master" {
       "export DOCKER_HOST=unix:///var/run/docker.sock",
       "sudo apt-get update -y",
       "sudo apt-get install -y docker-ce",
+      "sudo snap install kubectl --classic",
     ]
   }
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ubuntu --private-key '${var.private_key_path}' -i '${aws_instance.jenkins_master.public_ip},' Ansible/jenkins.yml"
+  }
+  provisioner "local-exec" {
+    command = "scp Ansible/config ubuntu@'${aws_instance.jenkins_master.public_ip}':/home/ubuntu/.kube"
   }
 }
 
