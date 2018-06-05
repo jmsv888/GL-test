@@ -39,3 +39,4 @@ After all the infrastructure is genareted we can execute a cat over the “host.
 
 After the jenkins file is loaded we should see all the pipeline process within the Project (Sadly again, even when the Project builds completely,  dockers images get pulled from repositories (docker hub), kubectl apply, bring up de pods but not all of them loads, we identify that the issue is with the way of the .yaml are configured).
 
+![alt text](https://raw.githubusercontent.com/jmsv888/GL-test/master/pipeline-results.png)
