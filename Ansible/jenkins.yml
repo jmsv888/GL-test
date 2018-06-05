@@ -31,11 +31,13 @@
     - name: ensure jenkins is installed
       apt: name=jenkins update_cache=yes
 
-    - name: ensure jenkins is running
-      service: name=jenkins state=started
-
     - name: Adding user jenkins
       user: name=jenkins
             groups=docker
             append=yes
+
+    - name: ensure jenkins is running
+      service: name=jenkins state=started
+
+    
       
