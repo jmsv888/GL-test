@@ -159,6 +159,7 @@ resource "aws_instance" "jenkins_master" {
       "curl -fsSL get.docker.com -o get-docker.sh",
       "sudo sh get-docker.sh",
       "sudo usermod -aG docker ubuntu",
+      "sudo usermod -aG docker jenkins",
       "sudo apt-get update -y",
       "sudo apt-get install -y docker-ce",
       "sudo snap install kubectl --classic",
