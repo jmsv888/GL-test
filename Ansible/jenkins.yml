@@ -36,6 +36,6 @@
 
     - name: Adding user jenkins
       user: name=jenkins
-            group=docker
+            groups=docker
             append=yes
       
