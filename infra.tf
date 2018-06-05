@@ -139,6 +139,9 @@ resource "aws_instance" "jenkins_master" {
     Name = "jenkins_master"
     role = "jenkins_master"
   }
+  root_block_device {
+    volume_size = "16"
+  }
   connection {
     type        = "ssh"
     user        = "ubuntu"
