@@ -171,7 +171,7 @@ resource "aws_instance" "jenkins_master" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ubuntu --private-key '${var.private_key_path}' -i '${aws_instance.jenkins_master.public_ip},' Ansible/jenkins.yml"
   }
   provisioner "local-exec" {
-    command = "scp -i \"keys/aws_terraform2.pem\" Ansible/config ubuntu@'${aws_instance.jenkins_master.public_ip}':/home/ubuntu/.kube"
+    command = "scp -i \"keys/aws_terraform2.pem\" Ansible/config ubuntu@'${aws_instance.jenkins_master.public_ip}':/home/ubuntu/.kube/config"
   }
 }
 
