@@ -154,22 +154,23 @@ resource "aws_instance" "jenkins_master" {
       "sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common python-simplejson",
       "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
       "sudo apt -y install python-pip",
-      "pip install -y awscli",
+      "pip install awscli",
       ". ./.profile",
       "curl -fsSL get.docker.com -o get-docker.sh",
       "sudo sh get-docker.sh",
       "sudo usermod -aG docker ubunu",
-      "export DOCKER_HOST=unix:///var/run/docker.sock",
       "sudo apt-get update -y",
       "sudo apt-get install -y docker-ce",
       "sudo snap install kubectl --classic",
+      "sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose",
+      "sudo chmod +x /usr/local/bin/docker-compose",
     ]
   }
   provisioner "local-exec" {
     command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ubuntu --private-key '${var.private_key_path}' -i '${aws_instance.jenkins_master.public_ip},' Ansible/jenkins.yml"
   }
   provisioner "local-exec" {
-    command = "scp Ansible/config ubuntu@'${aws_instance.jenkins_master.public_ip}':/home/ubuntu/.kube"
+    command = "scp -i \"keys/aws_terraform2.pem\" Ansible/config ubuntu@'${aws_instance.jenkins_master.public_ip}':/home/ubuntu/.kube"
   }
 }
 
